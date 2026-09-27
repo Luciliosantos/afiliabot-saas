@@ -1,0 +1,8 @@
+{
+  "name": "afiliabot/saas",
+  "description": "SaaS de automação de ofertas para Telegram",
+  "type": "project",
+  "require": {
+    "php": "^8.2"
+  }
+}

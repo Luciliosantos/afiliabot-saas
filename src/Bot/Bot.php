@@ -67,6 +67,11 @@ final class Bot
             return;
         }
 
+        if ($text === '🤖 Inteligência Artificial') {
+            $this->aiDevelopment($telegramId);
+            return;
+        }
+
         if ($text === '❓ Ajuda') {
             $this->help($telegramId);
             return;
@@ -133,6 +138,7 @@ final class Bot
                 'keyboard' => [
                     [['text'=>'📊 Meu painel'],['text'=>'🔗 Afiliados']],
                     [['text'=>'📢 Meus grupos'],['text'=>'💳 Assinatura']],
+                    [['text'=>'🤖 Inteligência Artificial']],
                     [['text'=>'❓ Ajuda']],
                 ],
                 'resize_keyboard' => true,
@@ -252,6 +258,16 @@ final class Bot
             ['inline_keyboard'=>[
                 [['text'=>'💠 Pagar com PIX','callback_data'=>'pay:' . $plan['id']]]
             ]]
+        );
+    }
+
+    private function aiDevelopment(int $telegramId): void
+    {
+        $this->tg->sendMessage(
+            (string)$telegramId,
+            "🚧 <b>Inteligência Artificial</b>\n\n" .
+            "Este recurso está em desenvolvimento.\n" .
+            "Em breve você poderá gerar automaticamente textos e imagens para suas ofertas."
         );
     }
 

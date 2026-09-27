@@ -1,0 +1,24 @@
+# Checklist de produção
+
+- [ ] PHP 8.2+ e extensões instaladas
+- [ ] `.env` criado e fora do Git
+- [ ] `APP_SECRET` forte
+- [ ] `ADMIN_PANEL_TOKEN` forte
+- [ ] `TELEGRAM_BOT_TOKEN` novo e válido
+- [ ] `TELEGRAM_WEBHOOK_SECRET` configurado
+- [ ] `TELEGRAM_SOURCE_CHAT_ID` correto
+- [ ] bot com acesso à origem
+- [ ] bot administrador nos destinos
+- [ ] `MP_ACCESS_TOKEN` de produção
+- [ ] `MP_WEBHOOK_SECRET` configurado
+- [ ] webhook Mercado Pago em HTTPS
+- [ ] `php bin/migrate.php`
+- [ ] `php bin/healthcheck.php`
+- [ ] `php bin/set_webhook.php`
+- [ ] worker no Supervisor/systemd
+- [ ] backup de `data/app.sqlite`
+- [ ] teste de pagamento
+- [ ] teste de oferta de texto
+- [ ] teste de oferta com foto
+- [ ] teste de oferta com vídeo
+- [ ] teste de retry

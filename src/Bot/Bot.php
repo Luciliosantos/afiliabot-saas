@@ -178,21 +178,51 @@ final class Bot
     }
 
     private function affiliateMenu(int $telegramId): void
-    {
-        $this->tg->sendMessage(
-            (string)$telegramId,
-            "🔗 <b>Afiliados</b>\n\nEscolha uma plataforma:",
-            [
-                'inline_keyboard' => [
-                    [['text'=>'🟠 Mercado Livre','callback_data'=>'aff:mercadolivre']],
-                    [['text'=>'🟧 Shopee','callback_data'=>'aff:shopee']],
-                    [['text'=>'🔵 Magalu','callback_data'=>'aff:magalu']],
-                ]
-            ]
+{
+    $user = $this->db->fetch(
+        "SELECT id FROM users WHERE telegram_id=?",
+        [$telegramId]
+    );
+
+    $ml = false;
+    $shopee = false;
+    $magalu = false;
+
+    if ($user) {
+        $ml = (bool)$this->db->scalar(
+            "SELECT COUNT(*) FROM affiliate_accounts WHERE user_id=? AND platform='mercadolivre' AND active=1",
+            [(int)$user['id']]
+        );
+
+        $shopee = (bool)$this->db->scalar(
+            "SELECT COUNT(*) FROM affiliate_accounts WHERE user_id=? AND platform='shopee' AND active=1",
+            [(int)$user['id']]
+        );
+
+        $magalu = (bool)$this->db->scalar(
+            "SELECT COUNT(*) FROM affiliate_accounts WHERE user_id=? AND platform='magalu' AND active=1",
+            [(int)$user['id']]
         );
     }
 
-    private function destinationsMenu(int $telegramId): void
+    $mlIcon = $ml ? '🟢' : '❌';
+    $shopeeIcon = $shopee ? '🟢' : '❌';
+    $magaluIcon = $magalu ? '🟢' : '❌';
+
+    $this->tg->sendMessage(
+        (string)$telegramId,
+        "🔗 <b>Afiliados</b>\n\nEscolha uma plataforma:",
+        [
+            'inline_keyboard' => [
+                [['text'=>"🟠 Mercado Livre {$mlIcon}",'callback_data'=>'aff:mercadolivre']],
+                [['text'=>"🟧 Shopee {$shopeeIcon}",'callback_data'=>'aff:shopee']],
+                [['text'=>"🔵 Magalu {$magaluIcon}",'callback_data'=>'aff:magalu']],
+            ]
+        ]
+    );
+}
+
+private function destinationsMenu(int $telegramId): void
     {
         $user = $this->db->fetch("SELECT id FROM users WHERE telegram_id=?", [$telegramId]);
         $rows = $this->db->fetchAll(
@@ -311,7 +341,15 @@ final class Bot
 
         try {
             if (str_starts_with($data, 'aff:')) {
-                $platform = substr($data, 4);
+            $action = substr($data, 4);
+
+            if ($action === 'back') {
+                $this->affiliateMenu($telegramId);
+                return;
+            }
+
+            if (str_starts_with($action, 'edit:')) {
+                $platform = substr($action, 5);
 
                 $this->setState(
                     $telegramId,
@@ -321,15 +359,94 @@ final class Bot
 
                 $this->tg->sendMessage(
                     (string)$telegramId,
-                    "Envie seu <b>ID/identificador</b> de afiliado da plataforma <b>" .
-                    h($platform) .
-                    "</b>.\n\nOu envie <code>pular</code> para configurar apenas um template de link depois."
+                    "✏️ <b>Editar afiliado</b>\n\nEnvie o novo ID/identificador de afiliado da plataforma <b>" .
+                    h($platform) . "</b>."
                 );
 
                 return;
             }
 
-            if ($data === 'dest:add') {
+            if (str_starts_with($action, 'delete:')) {
+                $platform = substr($action, 7);
+
+                $user = $this->db->fetch(
+                    "SELECT id FROM users WHERE telegram_id=?",
+                    [$telegramId]
+                );
+
+                if ($user) {
+                    $this->db->execute(
+                        "UPDATE affiliate_accounts
+                         SET active=0, updated_at=?
+                         WHERE user_id=? AND platform=?",
+                        [now(), (int)$user['id'], $platform]
+                    );
+                }
+
+                $this->tg->sendMessage(
+                    (string)$telegramId,
+                    "🗑️ Afiliado <b>" . h($platform) . "</b> desativado."
+                );
+
+                $this->affiliateMenu($telegramId);
+                return;
+            }
+
+            $platform = $action;
+
+            $user = $this->db->fetch(
+                "SELECT id FROM users WHERE telegram_id=?",
+                [$telegramId]
+            );
+
+            $account = null;
+
+            if ($user) {
+                $account = $this->db->fetch(
+                    "SELECT * FROM affiliate_accounts
+                     WHERE user_id=? AND platform=? AND active=1
+                     LIMIT 1",
+                    [(int)$user['id'], $platform]
+                );
+            }
+
+            if ($account) {
+                $this->tg->sendMessage(
+                    (string)$telegramId,
+                    "🔗 <b>" . h($platform) . "</b>\n\n" .
+                    "ID cadastrado: <code>" . h((string)$account['affiliate_id']) . "</code>",
+                    [
+                        'inline_keyboard' => [
+                            [
+                                ['text'=>'✏️ Editar','callback_data'=>'aff:edit:' . $platform],
+                                ['text'=>'🗑️ Excluir','callback_data'=>'aff:delete:' . $platform]
+                            ],
+                            [
+                                ['text'=>'↩️ Voltar','callback_data'=>'aff:back']
+                            ]
+                        ]
+                    ]
+                );
+                return;
+            }
+
+            $this->setState(
+                $telegramId,
+                'affiliate_id',
+                json_encode(['platform' => $platform])
+            );
+
+            $this->tg->sendMessage(
+                (string)$telegramId,
+                "Envie seu <b>ID/identificador</b> de afiliado da plataforma <b>" .
+                h($platform) .
+                "</b>.\n\nOu envie <code>pular</code> para configurar apenas um template de link depois."
+            );
+
+            return;
+        }
+
+        if ($data === 'dest:add') {
                 $this->setState($telegramId, 'destination', '');
 
                 $this->tg->sendMessage(
